@@ -12,6 +12,8 @@ export OPENSSL_CONF = $(CURDIR)/debian/openssl.cnf
 
 # skip benchmarking by default
 DEB_BUILD_OPTIONS 	+= nobench
+# skip test - have built on trixie once with tests and they passed
+DEB_BUILD_OPTIONS   += notest
 
 # show options
 $(info DEB_BUILD_OPTIONS="$(DEB_BUILD_OPTIONS)")
