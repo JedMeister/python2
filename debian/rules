@@ -12,6 +12,10 @@ export OPENSSL_CONF = $(CURDIR)/debian/openssl.cnf
 
 # skip benchmarking by default
 DEB_BUILD_OPTIONS 	+= nobench
+# skip tests - they take forever & have run tests on trixie
+DEB_BUILD_OPTIONS   += notest
+# skip building docs
+DEB_BUILD_OPTIONS   += nodoc
 
 # show options
 $(info DEB_BUILD_OPTIONS="$(DEB_BUILD_OPTIONS)")
@@ -685,8 +689,6 @@ minimal-test:
 
 stamps/stamp-doc-html:
 	dh_testdir
-	$(MAKE) -C Doc html
-	@mkdir -p stamps
 	touch stamps/stamp-doc-html
 
 build-doc: stamps/stamp-build-doc
@@ -723,12 +725,9 @@ endif
 clean: control-file
 	dh_testdir
 	dh_testroot
-	dh_autotools-dev_restoreconfig
-	$(MAKE) -f debian/rules unpatch
 	rm -rf stamps .pc
 	rm -f debian/test_results
 
-	$(MAKE) -C Doc clean
 	sed 's/^@/#/' Makefile.pre.in | $(MAKE) -f - srcdir=. distclean
 	rm -rf Lib/test/db_home
 	rm -rf $(buildd_static) $(buildd_shared) $(buildd_debug) $(buildd_shdebug)
@@ -764,11 +763,6 @@ ifeq ($(DEB_HOST_ARCH_BITS),64)
 	sed -i 's/\(Py_InitModule4[^@]*\)@/\1_64@/' \
 		debian/lib$(PVER).symbols debian/lib$(PVER)-dbg.symbols
 endif
-
-2to3-man:
-	help2man --no-info --version-string=$(VER) --no-discard-stderr \
-	  --name 'Python2 to Python3 converter' \
-	  2to3-$(VER) > debian/2to3-$(VER).1
 
 install: build-arch stamps/stamp-install
 stamps/stamp-install: stamps/stamp-build control-file stamps/stamp-control
@@ -841,8 +835,6 @@ endif
 	rm -f $(d)/usr/lib/$(DEB_HOST_MULTIARCH)/pkgconfig/python.pc
 	rm -f $(d)/usr/lib/$(DEB_HOST_MULTIARCH)/pkgconfig/python2.pc
 	rm -f $(d)/usr/bin/python2{,-config}
-	rm -f $(d)/usr/share/man/man1/python.1
-	rm -f $(d)/usr/share/man/man1/python2{,-config}.1
 	rm -f $(d)/$(scriptdir)/lib2to3/*.pickle
 
 	if [ -d $(d)/$(scriptdir)/ensurepip/_bundled ]; then \
@@ -856,23 +848,16 @@ endif
 	: # fix some file permissions
 	chmod a-x $(d)/$(scriptdir)/{fractions,lib-tk/Tix}.py
 
-	: # move manpages to new names
-	if [ -d $(d)/usr/man/man1 ]; then \
-	    mkdir -p $(d)/usr/share/man; \
-	    mv $(d)/usr/man/man1/* $(d)/usr/share/man/man1/; \
-	    rm -rf $(d)/usr/man/; \
-	fi
-	cp -p debian/pydoc.1 $(d)/usr/share/man/man1/pydoc$(VER).1
+    : # remove manpages - if they exist
+	rm -rf $(d)/usr/man/
 
 	: # Symlinks to /usr/bin for some tools
 	ln -sf ../lib/python$(VER)/pdb.py $(d)/usr/bin/pdb$(VER)
-	cp -p debian/pdb.1 $(d)/usr/share/man/man1/pdb$(VER).1
 
 	: # versioned install only
 	rm -f $(d)/usr/bin/python-config
 
-	mv $(d)/usr/bin/2to3 $(d)/usr/bin/2to3-$(VER)
-	cp debian/2to3-$(VER).1 $(d)/usr/share/man/man1/2to3-$(VER).1
+	rm -f $(d)/usr/bin/2to3
 
 #	: # remove the bsddb stuff
 #	rm -rf $(d)/$(scriptdir)/bsddb
@@ -884,8 +869,7 @@ endif
 
 	dh_installdirs -p$(p_lib) \
 		usr/lib/$(DEB_HOST_MULTIARCH) \
-		$(scriptdir)/config-$(DEB_HOST_MULTIARCH) \
-		usr/share/doc
+		$(scriptdir)/config-$(DEB_HOST_MULTIARCH)
 	: # install the shared library
 	cp -p $(buildd_shared)/libpython$(VER).so.1.0 \
 		$(d_lib)/usr/lib/$(DEB_HOST_MULTIARCH)/
@@ -894,8 +878,6 @@ endif
 		/usr/lib/$(DEB_HOST_MULTIARCH)/libpython$(VER).so.1 \
 	    /usr/lib/$(DEB_HOST_MULTIARCH)/libpython$(VER).so.1 \
 		/$(scriptdir)/config-$(DEB_HOST_MULTIARCH)/libpython$(VER).so
-
-	ln -sf $(p_base) $(d_lib)/usr/share/doc/$(p_lib)
 
 	ln -sf libpython$(VER).so.1 $(d)/usr/lib/$(DEB_HOST_MULTIARCH)/libpython$(VER).so
 
@@ -906,7 +888,6 @@ endif
 
 	mv $(d)/usr/bin/pydoc $(d)/usr/bin/pydoc$(VER)
 	cp -p Tools/i18n/pygettext.py $(d)/usr/bin/pygettext$(VER)
-	cp -p debian/pygettext.1 $(d)/usr/share/man/man1/pygettext$(VER).1
 
 	: # install the Makefile of the shared python build
 	sed -e '/^OPT/s,-O3,-O2,' \
@@ -921,7 +902,6 @@ endif
 		etc/$(PVER) \
 		usr/bin \
 		usr/include/$(PVER) \
-		usr/share/man/man1 \
 		$(scriptdir)/lib-dynload
 	$(dh_compat2) dh_movefiles -p$(p_lmin) --sourcedir=$(d) \
 		$(foreach i,$(MIN_MODS),$(scriptdir)/$(i).py) \
@@ -936,11 +916,9 @@ endif
 
 	: # Move the binary and the minimal libraries into $(p_min).
 	dh_installdirs -p$(p_min) \
-		usr/bin \
-		usr/share/man/man1
+		usr/bin
 	$(dh_compat2) dh_movefiles -p$(p_min) --sourcedir=$(d) \
-		usr/bin/python$(VER) \
-		usr/share/man/man1/python$(VER).1
+		usr/bin/python$(VER)
 
 	: # Install sitecustomize.py.
 	cp -p debian/sitecustomize.py $(d_lmin)/etc/$(PVER)/
@@ -955,8 +933,7 @@ endif
 	dh_installdirs -p$(p_ldev) \
 		usr/bin \
 		$(scriptdir) \
-		usr/include \
-		usr/share/man/man1
+		usr/include
 
 	$(dh_compat2) dh_movefiles -p$(p_ldev) --sourcedir=$(d) \
 		usr/bin/$(DEB_HOST_MULTIARCH)-python$(VER)-config \
@@ -968,14 +945,9 @@ endif
 	sed 's/@subdir@/$(PVER)/;s/@header@/pyconfig.h/' \
 		debian/multiarch.h.in > $(d_ldev)/usr/include/$(PVER)/pyconfig.h
 
-	cp -p debian/python-config.1 \
-		$(d_ldev)/usr/share/man/man1/$(DEB_HOST_MULTIARCH)-python$(VER)-config.1
-
 ifneq ($(DEB_HOST_MULTIARCH),$(DEB_HOST_GNU_TYPE))
 	ln -sf $(DEB_HOST_MULTIARCH)-$(PVER)-config \
 		$(d_ldev)/usr/bin/$(DEB_HOST_GNU_TYPE)-$(PVER)-config
-	ln -sf $(DEB_HOST_MULTIARCH)-$(PVER)-config.1.gz \
-		$(d_ldev)/usr/share/man/man1/$(DEB_HOST_GNU_TYPE)-$(PVER)-config.1.gz
 endif
 
 	sed -i \
@@ -992,23 +964,16 @@ endif
 
 	: # Move the static library and the header files into $(p_dev).
 	dh_installdirs -p$(p_dev) \
-		usr/share/doc/python$(VER)/$(DEB_HOST_MULTIARCH) \
-		usr/share/man/man1 \
-		$(scriptdir) \
-		$(scriptdir)/doc/html
+		$(scriptdir)
 
 	cp -p Misc/HISTORY Misc/README.valgrind Misc/gdbinit \
-		debian/README.maintainers \
-		$(d_dev)/usr/share/doc/python$(VER)/
-	cp -p	$(buildd_static)/pybench.log \
-		$(d_dev)/usr/share/doc/python$(VER)/$(DEB_HOST_MULTIARCH)/
+		debian/README.maintainers
 
 	$(dh_compat2) dh_movefiles -p$(p_dev) --sourcedir=$(d) \
 		usr/bin/python$(VER)-config \
 		usr/lib/python$(VER)/distutils/command/wininst-*.exe
 
 	ln -sf $(DEB_HOST_MULTIARCH)-$(PVER)-config $(d_dev)/usr/bin/$(PVER)-config
-	ln -sf $(DEB_HOST_MULTIARCH)-$(PVER)-config.1.gz $(d_dev)/usr/share/man/man1/$(PVER)-config.1.gz
 
 ifeq ($(with_tk),yes)
 	: # Move the Tkinter files into $(p_tk).
@@ -1054,40 +1019,15 @@ endif
 	mv $(d)/usr/bin/idle $(d)/usr/bin/idle-python$(VER)
 	rm -f $(d)/usr/lib/python$(VER)/idlelib/idle.bat
 	dh_installdirs -p$(p_idle) \
-		usr/bin \
-		usr/share/man/man1
+		usr/bin
 	$(dh_compat2) dh_movefiles -p$(p_idle) --sourcedir=$(d) \
 		usr/lib/python$(VER)/idlelib \
 		usr/bin/idle-python$(VER)
-	cp -p debian/idle-$(PVER).1 $(d_idle)/usr/share/man/man1/
-
-	: # Move the demos and tools into $(p_exam)'s doc directory
-	dh_installdirs -p$(p_exam) \
-		usr/share/doc/python$(VER)/examples
-
-	cp -rp Demo Tools $(d_exam)/usr/share/doc/python$(VER)/examples/
-	rm -rf $(d_exam)/usr/share/doc/python$(VER)/examples/Demo/sgi
-	: # IDLE is in its own package:
-	rm -rf $(d_exam)/usr/share/doc/python$(VER)/examples/Tools/idle
-	: # XXX: We don't need rgb.txt, we'll use our own:
-	rm -rf $(d_exam)/usr/share/doc/python$(VER)/examples/Tools/pynche/X
 
 	: # XXX: Some files in upstream Demo and Tools have strange
 	: # exec permissions, make lintian glad:
 	-chmod 644 $(d_tk)/$(scriptdir)/lib-tk/Tix.py
 	-chmod 644 $(d)/$(scriptdir)/runpy.py
-
-	cd $(d_exam)/usr/share/doc/python$(VER)/examples && chmod 644 \
-	  Demo/{classes/*.py*,comparisons/patterns} \
-	  Demo/{rpc/test,threads/*.py*,md5test/*} \
-	  Demo/pdist/{client.py,cmdfw.py,cmptree.py,cvslib.py,cvslock.py,FSProxy.py,mac.py,rcsclient.py,rcslib.py,security.py,server.py,sumtree.py} \
-	  Demo/scripts/morse.py \
-	  Demo/sockets/{broadcast.py,ftp.py,mcast.py,radio.py} \
-	  Demo/tix/{bitmaps/{tix.gif,*x[pb]m*},samples/*.py} \
-	  Demo/tkinter/guido/{AttrDialog.py,hanoi.py,hello.py,imagedraw.py,imageview.py,listtree.py,ManPage.py,ShellWindow.py,wish.py} \
-	  Tools/scripts/pydocgui.pyw \
-	  Tools/scripts/mailerdaemon.py
-	rm -f $(d_exam)/usr/share/doc/python$(VER)/examples/Demo/scripts/newslist.*
 
 	: # Replace all '#!' calls to python with $(PY_INTERPRETER)
 	: # and make them executable
@@ -1103,29 +1043,9 @@ endif
 	  fi; \
 	done
 
-	: # Move the docs into $(p_base)'s /usr/share/doc/$(PVER) directory,
-	: # all other packages only have a copyright file.
-	dh_installdocs -p$(p_base) \
-		README Misc/NEWS Misc/ACKS
-	ln -sf NEWS.gz $(d_base)/usr/share/doc/$(p_base)/changelog.gz
-	dh_installdocs --all -N$(p_base) -N$(p_dev) -N$(p_dbg) -N$(p_lib) debian/README.Debian
 
 	: # IDLE has its own changelogs, docs...
 	dh_installchangelogs -p$(p_idle) Lib/idlelib/ChangeLog
-	dh_installdocs -p$(p_idle) Lib/idlelib/{NEWS,README,TODO,extend}.txt
-
-	mkdir -p $(d_idle)/usr/share/applications
-	cp -p debian/idle.desktop \
-		$(d_idle)/usr/share/applications/idle-$(PVER).desktop
-
-	: # those packages have own README.Debian's
-	install -m 644 -p debian/README.$(p_base) \
-		$(d_base)/usr/share/doc/$(PVER)/README.Debian
-	install -m 644 -p debian/README.$(p_idle) \
-		$(d_idle)/usr/share/doc/$(p_idle)/README.Debian
-ifeq ($(with_tk),yes)
-	cp -p debian/README.Tk $(d_tk)/usr/share/doc/$(p_tk)/
-endif
 
 	: # library files into $(p_lbase)
 	dh_installdirs -p$(p_lbase) \
@@ -1189,7 +1109,6 @@ endif
 
 	dh_installdirs -p$(p_ldbg) \
 		usr/bin \
-		usr/share/man/man1 \
 		$(scriptdir)/lib-dynload \
 		$(scriptdir)/plat-$(DEB_HOST_MULTIARCH) \
 		usr/include/$(PVER)_d \
@@ -1215,24 +1134,15 @@ endif
 	: # in $(p_ldbg), prefix python-config with triplets
 	cp $(d)-shdbg/usr/bin/python-config.sh \
 		$(d_ldbg)/usr/bin/$(DEB_HOST_MULTIARCH)-$(PVER)-dbg-config
-	ln -sf $(DEB_HOST_MULTIARCH)-$(PVER)-config.1.gz \
-		$(d_ldbg)/usr/share/man/man1/$(DEB_HOST_MULTIARCH)-$(PVER)-dbg-config.1.gz
 ifneq ($(DEB_HOST_MULTIARCH),$(DEB_HOST_GNU_TYPE))
 	ln -sf $(DEB_HOST_MULTIARCH)-$(PVER)-dbg-config \
 		$(d_ldbg)/usr/bin/$(DEB_HOST_GNU_TYPE)-$(PVER)-dbg-config
-	ln -sf $(DEB_HOST_MULTIARCH)-$(PVER)-config.1.gz \
-		$(d_ldbg)/usr/share/man/man1/$(DEB_HOST_GNU_TYPE)-$(PVER)-dbg-config.1.gz
 endif
 
 	dh_installdirs -p$(p_dbg) \
 		usr/bin \
-		$(scriptdir)/lib-dynload \
-		usr/share/man/man1 \
-		usr/share/doc/$(p_base)
+		$(scriptdir)/lib-dynload
 
-	cp -p Misc/SpecialBuilds.txt $(d_dbg)/usr/share/doc/$(p_base)/
-	cp -p debian/$(PVER)-dbg.README.Debian \
-		$(d_dbg)/usr/share/doc/$(p_base)/README.debug
 	cp -p $(buildd_debug)/python $(d_dbg)/usr/bin/$(PVER)-dbg
 	cp -p $(d)-shdbg/usr/bin/python-config.sh \
 		$(d_dbg)/usr/bin/$(PVER)-dbg-config
@@ -1267,10 +1177,8 @@ endif
 	cp -p $(buildd_debug)/pyconfig.h $(d_ldbg)/usr/include/$(DEB_HOST_MULTIARCH)/$(PVER)_d/
 	sed 's/@subdir@/$(PVER)_d/;s/@header@/pyconfig.h/' \
 		debian/multiarch.h.in > $(d_ldbg)/usr/include/$(PVER)_d/pyconfig.h
-	ln -sf $(PVER).1.gz $(d_dbg)/usr/share/man/man1/$(PVER)-dbg.1.gz
 	ln -sf $(DEB_HOST_MULTIARCH)-$(PVER)-dbg-config \
 		$(d_dbg)/usr/bin/$(PVER)-dbg-config
-	ln -sf $(PVER)-config.1.gz $(d_dbg)/usr/share/man/man1/$(PVER)-dbg-config.1.gz
 
 	for i in debian/*.overrides; do \
 	  b=$$(basename $$i .overrides); \
@@ -1283,35 +1191,6 @@ endif
 binary-indep: build-indep install stamps/stamp-control
 	dh_testdir -i
 	dh_testroot -i
-
-	: # $(p_doc) package
-	dh_installdirs -p$(p_doc) \
-		usr/share/doc/$(p_base) \
-		usr/share/doc/$(p_doc)
-	dh_installdocs -p$(p_doc)
-	cp -a Doc/build/html $(d_doc)/usr/share/doc/$(p_base)/
-	rm -f $(d_doc)/usr/share/doc/$(p_base)/html/_static/jquery.js
-	rm -f $(d_doc)/usr/share/doc/$(p_base)/html/_static/underscore.js
-	dh_link -p$(p_doc) \
-		/usr/share/doc/$(p_base)/html \
-			/usr/share/doc/$(p_doc)/html \
-		/usr/share/javascript/jquery/jquery.js \
-			/usr/share/doc/$(p_base)/html/_static/jquery.js \
-		/usr/share/javascript/underscore/underscore.js \
-			/usr/share/doc/$(p_base)/html/_static/underscore.js
-
-	: # devhelp docs
-	$(buildd_static)/python debian/pyhtml2devhelp.py \
-		$(d_doc)/usr/share/doc/$(p_base)/html index.html $(VER) \
-		> $(d_doc)/usr/share/doc/$(p_base)/html/$(PVER).devhelp
-	gzip -9nv $(d_doc)/usr/share/doc/$(p_base)/html/$(PVER).devhelp
-	dh_link -p$(p_doc) \
-		/usr/share/doc/$(p_base)/html /usr/share/devhelp/books/$(PVER)
-
-	for i in $(p_ltst); do \
-	  rm -rf debian/$$i/usr/share/doc/$$i; \
-	  ln -s $(p_lbase) debian/$$i/usr/share/doc/$$i; \
-	done
 
 	dh_installdebconf -i $(dh_args)
 	dh_installexamples -i $(dh_args)
@@ -1344,18 +1223,6 @@ binary-arch: build-arch install
 	-dh_icons -a || dh_iconcache -a
 #	dh_installmime -a
 	dh_installchangelogs -a
-	for i in $(p_dev) $(p_dbg); do \
-	  rm -rf debian/$$i/usr/share/doc/$$i; \
-	  ln -s $(p_base) debian/$$i/usr/share/doc/$$i; \
-	done
-	for i in $(p_lbase); do \
-	  rm -rf debian/$$i/usr/share/doc/$$i; \
-	  ln -s $(p_lmin) debian/$$i/usr/share/doc/$$i; \
-	done
-	for i in $(p_ldev) $(p_ldbg) $(p_lib); do \
-	  rm -rf debian/$$i/usr/share/doc/$$i; \
-	  ln -s $(p_lbase) debian/$$i/usr/share/doc/$$i; \
-	done
 	-find debian ! -perm -200 -print -exec chmod +w {} \;
 ifneq ($(with_tk),yes)
 	rm -f $(d_lbase)/$(scriptdir)/lib-dynload/_tkinter.$(DEB_HOST_MULTIARCH).so
@@ -1414,15 +1281,6 @@ patchdir	= debian/patches
 glibc_version := $(shell dpkg -s locales | awk '/^Version:/ {print $$2}')
 broken_utimes := $(shell dpkg --compare-versions $(glibc_version) lt 2.3.5 && echo yes || echo no)
 
-$(patchdir)/series: $(patchdir)/series.in
-	cpp -E \
-	  -D$(derivative) \
-	  $(if $(filter $(broken_utimes),yes),-DBROKEN_UTIMES) \
-	  $(if $(filter $(with_fpectl),yes),-DWITH_FPECTL) \
-	  -Darch_os_$(DEB_HOST_ARCH_OS) -Darch_$(DEB_HOST_ARCH) \
-	  -o - $(patchdir)/series.in \
-	  | egrep -v '^(#.*|$$)' > $(patchdir)/series
-
 patch: stamps/stamp-patch
 stamps/stamp-patch: $(patchdir)/series
 	dh_testdir
@@ -1439,7 +1297,7 @@ stamps/stamp-patch: $(patchdir)/series
 	done >> stamps/pxx
 	mv stamps/pxx $@
 
-	dh_autotools-dev_updateconfig
+	dh_update_autotools_config
 
 	: # don't build pgen for cross builds, adjust timestamps
 	touch Parser/acceler.c Parser/grammar1.c Parser/listnode.c \
@@ -1455,19 +1313,6 @@ stamps/stamp-patch: $(patchdir)/series
 	@sleep 0.1
 	touch Python/graminit.c
 	ln -sf site-packages Lib/dist-packages
-
-reverse-patches: unpatch
-unpatch:
-	QUILT_PATCHES=$(patchdir) quilt pop -a -R || test $$? = 2
-	rm -f stamps/stamp-patch $(patchdir)/series
-	rm -rf configure autom4te.cache
-	rm -f Lib/dist-packages
-
-update-patches: $(patchdir)/series
-	export QUILT_PATCHES=$(patchdir); \
-	export QUILT_REFRESH_ARGS="--no-timestamps --no-index -pab"; \
-	export QUILT_DIFF_ARGS="--no-timestamps --no-index -pab"; \
-	while quilt push; do quilt refresh; done
 
 binary: binary-indep binary-arch
 
