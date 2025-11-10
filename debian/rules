@@ -721,8 +721,6 @@ endif
 clean: control-file
 	dh_testdir
 	dh_testroot
-	dh_autotools-dev_restoreconfig
-	$(MAKE) -f debian/rules unpatch
 	rm -rf stamps .pc
 	rm -f debian/test_results
 
@@ -1277,15 +1275,6 @@ patchdir	= debian/patches
 glibc_version := $(shell dpkg -s locales | awk '/^Version:/ {print $$2}')
 broken_utimes := $(shell dpkg --compare-versions $(glibc_version) lt 2.3.5 && echo yes || echo no)
 
-$(patchdir)/series: $(patchdir)/series.in
-	cpp -E \
-	  -D$(derivative) \
-	  $(if $(filter $(broken_utimes),yes),-DBROKEN_UTIMES) \
-	  $(if $(filter $(with_fpectl),yes),-DWITH_FPECTL) \
-	  -Darch_os_$(DEB_HOST_ARCH_OS) -Darch_$(DEB_HOST_ARCH) \
-	  -o - $(patchdir)/series.in \
-	  | egrep -v '^(#.*|$$)' > $(patchdir)/series
-
 patch: stamps/stamp-patch
 stamps/stamp-patch: $(patchdir)/series
 	dh_testdir
@@ -1318,19 +1307,6 @@ stamps/stamp-patch: $(patchdir)/series
 	@sleep 0.1
 	touch Python/graminit.c
 	ln -sf site-packages Lib/dist-packages
-
-reverse-patches: unpatch
-unpatch:
-	QUILT_PATCHES=$(patchdir) quilt pop -a -R || test $$? = 2
-	rm -f stamps/stamp-patch $(patchdir)/series
-	rm -rf configure autom4te.cache
-	rm -f Lib/dist-packages
-
-update-patches: $(patchdir)/series
-	export QUILT_PATCHES=$(patchdir); \
-	export QUILT_REFRESH_ARGS="--no-timestamps --no-index -pab"; \
-	export QUILT_DIFF_ARGS="--no-timestamps --no-index -pab"; \
-	while quilt push; do quilt refresh; done
 
 binary: binary-indep binary-arch
 
