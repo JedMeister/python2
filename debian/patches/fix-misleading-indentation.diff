@@ -1,0 +1,28 @@
+Description: Small patch to fix a couple of compile time warnings
+Author: Jeremy Davis <jeremy@turnkeylinux.org>
+Last-Update: 2025-11-10
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+--- a/Python/ast.c
++++ b/Python/ast.c
+@@ -2621,16 +2621,18 @@
+         /* handle "from ... import *" special b/c there's no children */
+         if (TYPE(n) == STAR) {
+             alias_ty import_alias = alias_for_import_name(c, n, 1);
+-            if (!import_alias)
++            if (!import_alias) {
+                 return NULL;
+                 asdl_seq_SET(aliases, 0, import_alias);
++            }
+         }
+         else {
+             for (i = 0; i < NCH(n); i += 2) {
+                 alias_ty import_alias = alias_for_import_name(c, CHILD(n, i), 1);
+-                if (!import_alias)
++                if (!import_alias) {
+                     return NULL;
+                     asdl_seq_SET(aliases, i / 2, import_alias);
++                }
+             }
+         }
+         if (mod != NULL)
