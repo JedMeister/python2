@@ -1,6 +1,6 @@
 --- a/Lib/test/test_minidom.py
 +++ b/Lib/test/test_minidom.py
-@@ -6,12 +6,14 @@
+@@ -6,12 +6,14 @@ from StringIO import StringIO
  from test import support
  import unittest
  
@@ -15,7 +15,7 @@
  
  
  tstfile = support.findfile("test.xml", subdir="xmltestdata")
-@@ -1051,7 +1053,13 @@
+@@ -1051,7 +1053,13 @@ class MinidomTest(unittest.TestCase):
  
          # Verify that character decoding errors raise exceptions instead
          # of crashing
@@ -32,7 +32,7 @@
          doc.unlink()
 --- a/Lib/test/test_xml_etree.py
 +++ b/Lib/test/test_xml_etree.py
-@@ -1482,12 +1482,6 @@
+@@ -1482,12 +1482,6 @@ class BugsTest(unittest.TestCase):
                  b"<?xml version='1.0' encoding='ascii'?>\n"
                  b'<body>t&#227;g</body>')
  

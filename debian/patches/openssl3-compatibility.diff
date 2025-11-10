@@ -7,11 +7,9 @@ Author: Stefano Rivera <stefanor@debian.org>
 Origin: upstream, https://github.com/python/cpython/commit/2b7de6696bf2f924cd2cd9ff0a539c8aa37c6244
 Bug-cpython: https://bugs.python.org/issue38820
 
-Index: python2.7-2.7.18/Lib/test/test_ssl.py
-===================================================================
---- python2.7-2.7.18.orig/Lib/test/test_ssl.py
-+++ python2.7-2.7.18/Lib/test/test_ssl.py
-@@ -359,11 +359,11 @@ class BasicSocketTests(unittest.TestCase
+--- a/Lib/test/test_ssl.py
++++ b/Lib/test/test_ssl.py
+@@ -361,11 +361,11 @@ class BasicSocketTests(unittest.TestCase
          # Some sanity checks follow
          # >= 0.9
          self.assertGreaterEqual(n, 0x900000)
@@ -27,10 +25,8 @@ Index: python2.7-2.7.18/Lib/test/test_ssl.py
          self.assertGreaterEqual(minor, 0)
          self.assertLess(minor, 256)
          self.assertGreaterEqual(fix, 0)
-Index: python2.7-2.7.18/Modules/_ssl.c
-===================================================================
---- python2.7-2.7.18.orig/Modules/_ssl.c
-+++ python2.7-2.7.18/Modules/_ssl.c
+--- a/Modules/_ssl.c
++++ b/Modules/_ssl.c
 @@ -1066,6 +1066,54 @@ _get_peer_alt_names (X509 *certificate)
                  PyTuple_SET_ITEM(t, 1, v);
                  break;

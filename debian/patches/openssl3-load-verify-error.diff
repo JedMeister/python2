@@ -6,11 +6,9 @@ Date:   Fri Apr 23 13:51:40 2021 +0200
     
     Signed-off-by: Christian Heimes <christian@python.org>
 
-Index: python2.7-2.7.18/Lib/test/test_ssl.py
-===================================================================
---- python2.7-2.7.18.orig/Lib/test/test_ssl.py
-+++ python2.7-2.7.18/Lib/test/test_ssl.py
-@@ -1047,12 +1047,17 @@ class ContextTests(unittest.TestCase):
+--- a/Lib/test/test_ssl.py
++++ b/Lib/test/test_ssl.py
+@@ -1049,12 +1049,17 @@ class ContextTests(unittest.TestCase):
          ctx = ssl.SSLContext(ssl.PROTOCOL_TLSv1)
          self.assertRaises(TypeError, ctx.load_verify_locations, cadata=object)
  
@@ -31,10 +29,8 @@ Index: python2.7-2.7.18/Lib/test/test_ssl.py
      def test_load_dh_params(self):
          filename = u'dhpäräm.pem'
          fs_encoding = sys.getfilesystemencoding()
-Index: python2.7-2.7.18/Modules/_ssl.c
-===================================================================
---- python2.7-2.7.18.orig/Modules/_ssl.c
-+++ python2.7-2.7.18/Modules/_ssl.c
+--- a/Modules/_ssl.c
++++ b/Modules/_ssl.c
 @@ -2923,7 +2923,7 @@ _add_ca_certs(PySSLContext *self, void *
  {
      BIO *biobuf = NULL;
