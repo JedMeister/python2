@@ -32,7 +32,7 @@
          doc.unlink()
 --- a/Lib/test/test_xml_etree.py
 +++ b/Lib/test/test_xml_etree.py
-@@ -1683,12 +1683,6 @@ def test_issue6233(self):
+@@ -1482,12 +1482,6 @@
                  b"<?xml version='1.0' encoding='ascii'?>\n"
                  b'<body>t&#227;g</body>')
  

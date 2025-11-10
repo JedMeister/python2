@@ -48,7 +48,6 @@ rename-md5-init.diff
 local-doc-references.diff
 m-i-p-s-r6.diff
 multiarch-libc.diff
-end-of-life.diff
 CVE-2019-20907.diff
 CVE-2020-8492.diff
 CVE-2021-3177.diff
@@ -58,6 +57,5 @@ openssl3-unexpected-eof.diff
 openssl3-load-verify-error.diff
 openssl3-version.diff
 openssl3-tests-tlsv1.diff
-sphinx4.diff
 skip-tls1.2-tests.diff
 issue46811.diff

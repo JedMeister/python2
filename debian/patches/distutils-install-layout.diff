@@ -2,69 +2,9 @@
 # DP: - installs into $prefix/dist-packages instead of $prefix/site-packages.
 # DP: - doesn't encode the python version into the egg name.
 
---- a/Doc/install/index.rst
-+++ b/Doc/install/index.rst
-@@ -255,6 +255,8 @@ is pure Python or contains extensions ("
- +-----------------+-----------------------------------------------------+--------------------------------------------------+-------+
- | Platform        | Standard installation location                      | Default value                                    | Notes |
- +=================+=====================================================+==================================================+=======+
-+| Debian/Ubuntu   | :file:`{prefix}/lib/python{X.Y}/dist-packages`      | :file:`/usr/local/lib/python{X.Y}/dist-packages` | \(0)  |
-++-----------------+-----------------------------------------------------+--------------------------------------------------+-------+
- | Unix (pure)     | :file:`{prefix}/lib/python{X.Y}/site-packages`      | :file:`/usr/local/lib/python{X.Y}/site-packages` | \(1)  |
- +-----------------+-----------------------------------------------------+--------------------------------------------------+-------+
- | Unix (non-pure) | :file:`{exec-prefix}/lib/python{X.Y}/site-packages` | :file:`/usr/local/lib/python{X.Y}/site-packages` | \(1)  |
-@@ -264,6 +266,14 @@ is pure Python or contains extensions ("
- 
- Notes:
- 
-+(0)
-+   Starting with Python-2.6 Debian/Ubuntu uses for the Python which comes within
-+   the Linux distribution a non-default name for the installation directory. This
-+   is to avoid overwriting of the python modules which come with the distribution,
-+   which unfortunately is the upstream behaviour of the installation tools. The
-+   non-default name in :file:`/usr/local` is used not to overwrite a local python
-+   installation (defaulting to :file:`/usr/local`).
-+
- (1)
-    Most Linux distributions include Python as a standard part of the system, so
-    :file:`{prefix}` and :file:`{exec-prefix}` are usually both :file:`/usr` on
-@@ -448,6 +458,15 @@ them to go in :file:`/usr/local/lib/pyth
- 
-    /usr/bin/python setup.py install --prefix=/usr/local
- 
-+Starting with Python-2.6 Debian/Ubuntu does use
-+:file:`/usr/lib/python{X.Y}/dist-packages` and
-+:file:`/usr/local/lib/python{X.Y}/dist-packages` for the installation
-+of python modules included in the Linux distribution.  To overwrite
-+the name of the site directory, explicitely use the :option:`--prefix`
-+option, however make sure that the installation path is included in
-+``sys.path``.  For packaging of python modules for Debian/Ubuntu, use
-+the new ``setup.py install`` option :option:`--install-layout=deb`.
-+
- Another possibility is a network filesystem where the name used to write to a
- remote directory is different from the name used to read it: for example, the
- Python interpreter accessed as :file:`/usr/local/bin/python` might search for
-@@ -699,6 +718,17 @@ Add-on Python modules might then belong
- import them, this directory must be added to ``sys.path``.  There are several
- different ways to add the directory.
- 
-+On Debian/Ubuntu, starting with Python-2.6 the convention for system
-+installed packages is to put then in the
-+:file:`/usr/lib/python{X.Y}/dist-packages/` directory, and for locally
-+installed packages is to put them in the
-+:file:`/usr/lib/python{X.Y}/dist-packages/` directory.  To share the
-+locally installed packages for the system provided Python with the
-+locally installed packages of a local python installation, make
-+:file:`/usr/lib/python{X.Y}/dist-packages/` a symbolic link to the
-+:file:`{...}/site-packages/` directory of your local python
-+installation.
-+
- The most convenient way is to add a path configuration file to a directory
- that's already on Python's path, usually to the :file:`.../site-packages/`
- directory.  Path configuration files have an extension of :file:`.pth`, and each
 --- a/Lib/distutils/command/install.py
 +++ b/Lib/distutils/command/install.py
-@@ -47,6 +47,20 @@ INSTALL_SCHEMES = {
+@@ -47,6 +47,20 @@
          'scripts': '$base/bin',
          'data'   : '$base',
          },
@@ -85,7 +25,7 @@
      'unix_home': {
          'purelib': '$base/lib/python',
          'platlib': '$base/lib/python',
-@@ -154,6 +168,9 @@ class install (Command):
+@@ -154,6 +168,9 @@
  
          ('record=', None,
           "filename in which to record list of installed files"),
@@ -95,7 +35,7 @@
          ]
  
      boolean_options = ['compile', 'force', 'skip-build', 'user']
-@@ -168,6 +185,7 @@ class install (Command):
+@@ -168,6 +185,7 @@
          self.exec_prefix = None
          self.home = None
          self.user = 0
@@ -103,7 +43,7 @@
  
          # These select only the installation base; it's up to the user to
          # specify the installation scheme (currently, that means supplying
-@@ -189,6 +207,9 @@ class install (Command):
+@@ -189,6 +207,9 @@
          self.install_userbase = USER_BASE
          self.install_usersite = USER_SITE
  
@@ -113,7 +53,7 @@
          self.compile = None
          self.optimize = None
  
-@@ -421,6 +442,7 @@ class install (Command):
+@@ -421,6 +442,7 @@
              self.install_base = self.install_platbase = self.home
              self.select_scheme("unix_home")
          else:
@@ -121,7 +61,7 @@
              if self.prefix is None:
                  if self.exec_prefix is not None:
                      raise DistutilsOptionError, \
-@@ -435,7 +457,23 @@ class install (Command):
+@@ -435,7 +457,23 @@
  
              self.install_base = self.prefix
              self.install_platbase = self.exec_prefix
@@ -148,7 +88,7 @@
  
 --- a/Lib/distutils/command/install_egg_info.py
 +++ b/Lib/distutils/command/install_egg_info.py
-@@ -14,18 +14,37 @@ class install_egg_info(Command):
+@@ -14,18 +14,37 @@
      description = "Install package's PKG-INFO metadata as an .egg-info file"
      user_options = [
          ('install-dir=', 'd', "directory to install to"),
@@ -193,7 +133,7 @@
  
 --- a/Lib/distutils/sysconfig.py
 +++ b/Lib/distutils/sysconfig.py
-@@ -125,6 +125,7 @@ def get_python_lib(plat_specific=0, stan
+@@ -125,6 +125,7 @@
      If 'prefix' is supplied, use it instead of sys.prefix or
      sys.exec_prefix -- i.e., ignore 'plat_specific'.
      """
@@ -201,7 +141,7 @@
      if prefix is None:
          prefix = plat_specific and EXEC_PREFIX or PREFIX
  
-@@ -133,6 +134,8 @@ def get_python_lib(plat_specific=0, stan
+@@ -133,6 +134,8 @@
                                   "lib", "python" + get_python_version())
          if standard_lib:
              return libpython
@@ -212,7 +152,7 @@
  
 --- a/Lib/site.py
 +++ b/Lib/site.py
-@@ -273,6 +273,13 @@ def addusersitepackages(known_paths):
+@@ -273,6 +273,13 @@
  
      if ENABLE_USER_SITE and os.path.isdir(user_site):
          addsitedir(user_site, known_paths)
@@ -228,7 +168,7 @@
  def getsitepackages():
 --- a/Lib/sysconfig.py
 +++ b/Lib/sysconfig.py
-@@ -16,6 +16,26 @@ _INSTALL_SCHEMES = {
+@@ -16,6 +16,26 @@
          'scripts': '{base}/bin',
          'data': '{base}',
          },
@@ -255,7 +195,7 @@
      'posix_home': {
          'stdlib': '{base}/lib/python',
          'platstdlib': '{base}/lib/python',
-@@ -134,7 +154,7 @@ def is_python_build():
+@@ -134,7 +154,7 @@
  _PYTHON_BUILD = is_python_build()
  
  if _PYTHON_BUILD:
@@ -264,7 +204,7 @@
          _INSTALL_SCHEMES[scheme]['include'] = '{projectbase}/Include'
          _INSTALL_SCHEMES[scheme]['platinclude'] = '{srcdir}'
  
-@@ -168,7 +188,10 @@ def _expand_vars(scheme, vars):
+@@ -168,7 +188,10 @@
  
  def _get_default_scheme():
      if os.name == 'posix':
@@ -276,7 +216,7 @@
          return 'posix_prefix'
      return os.name
  
-@@ -315,7 +338,7 @@ def get_makefile_filename():
+@@ -315,7 +338,7 @@
      """Return the path of the Makefile."""
      if _PYTHON_BUILD:
          return os.path.join(_PROJECT_BASE, "Makefile")
@@ -285,7 +225,7 @@
  
  # Issue #22199: retain undocumented private name for compatibility
  _get_makefile_filename = get_makefile_filename
-@@ -447,7 +470,7 @@ def get_config_h_filename():
+@@ -447,7 +470,7 @@
          else:
              inc_dir = _PROJECT_BASE
      else:
@@ -296,7 +236,7 @@
  def get_scheme_names():
 --- a/Lib/test/test_import.py
 +++ b/Lib/test/test_import.py
-@@ -301,7 +301,7 @@ class ImportTests(unittest.TestCase):
+@@ -301,7 +301,7 @@
          with check_warnings(('', ImportWarning)):
              # Just a random non-package directory we always expect to be
              # somewhere in sys.path...
@@ -307,7 +247,7 @@
          path = os.path.abspath(TESTFN)
 --- a/Lib/test/test_site.py
 +++ b/Lib/test/test_site.py
-@@ -255,10 +255,13 @@ class HelperFunctionsTests(unittest.Test
+@@ -255,10 +255,13 @@
          elif os.sep == '/':
              # OS X, Linux, FreeBSD, etc
              self.assertEqual(len(dirs), 2)
@@ -326,7 +266,7 @@
              # other platforms
 --- a/Lib/test/test_sysconfig.py
 +++ b/Lib/test/test_sysconfig.py
-@@ -239,8 +239,8 @@ class TestSysConfig(unittest.TestCase):
+@@ -239,8 +239,8 @@
          self.assertTrue(os.path.isfile(config_h), config_h)
  
      def test_get_scheme_names(self):
@@ -339,7 +279,7 @@
      @unittest.skipIf(sys.platform.startswith('win'),
 --- a/Lib/distutils/tests/test_install.py
 +++ b/Lib/distutils/tests/test_install.py
-@@ -194,7 +194,7 @@ class InstallTestCase(support.TempdirMan
+@@ -194,7 +194,7 @@
  
          found = [os.path.basename(line) for line in content.splitlines()]
          expected = ['hello.py', 'hello.pyc', 'sayhi',
@@ -348,7 +288,7 @@
          self.assertEqual(found, expected)
  
      def test_record_extensions(self):
-@@ -224,7 +224,7 @@ class InstallTestCase(support.TempdirMan
+@@ -224,7 +224,7 @@
  
          found = [os.path.basename(line) for line in content.splitlines()]
          expected = [_make_ext_name('xx'),
@@ -359,7 +299,7 @@
      def test_debug_mode(self):
 --- a/Lib/distutils/tests/test_bdist_dumb.py
 +++ b/Lib/distutils/tests/test_bdist_dumb.py
-@@ -87,7 +87,7 @@ class BuildDumbTestCase(support.TempdirM
+@@ -87,7 +87,7 @@
              fp.close()
  
          contents = sorted(filter(None, map(os.path.basename, contents)))
@@ -370,7 +310,7 @@
          self.assertEqual(contents, sorted(wanted))
 --- a/Lib/pydoc.py
 +++ b/Lib/pydoc.py
-@@ -392,6 +392,7 @@ class Doc:
+@@ -392,6 +392,7 @@
                                   'marshal', 'posix', 'signal', 'sys',
                                   'thread', 'zipimport') or
               (file.startswith(basedir) and
