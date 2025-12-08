@@ -1061,6 +1061,10 @@ endif
 
 	: # The rest goes into $(p_base)
 	mkdir -p $(d)/usr/lib/python$(VER)/dist-packages
+	# because we didn't build docs, there is no python2.7 dir
+	# so let's make it
+	mkdir -p $(d_base)
+	touch $(d_base)/empty-file
 	(cd $(d) && tar cf - .) | (cd $(d_base) && tar xpf -)
 	sh debian/dh_rmemptydirs -p$(p_base)
 	rm -f $(d_base)/usr/bin/python
