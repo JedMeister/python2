@@ -1202,7 +1202,7 @@ endif
 	touch stamps/stamp-install
 
 # Build architecture-independent files here.
-binary-indep: build-indep install stamps/stamp-control
+binary-indep: install stamps/stamp-control
 	dh_testdir -i
 	dh_testroot -i
 
