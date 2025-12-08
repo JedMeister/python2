@@ -238,7 +238,6 @@ p_gdbm	:= $(PVER)-gdbm
 p_dev	:= $(PVER)-dev
 p_exam	:= $(PVER)-examples
 p_idle	:= idle-$(PVER)
-p_doc	:= $(PVER)-doc
 p_dbg	:= $(PVER)-dbg
 
 p_lbase	:= lib$(PVER)-stdlib
@@ -255,7 +254,6 @@ d_gdbm	:= debian/$(p_gdbm)
 d_dev	:= debian/$(p_dev)
 d_exam	:= debian/$(p_exam)
 d_idle	:= debian/$(p_idle)
-d_doc	:= debian/$(p_doc)
 d_dbg	:= debian/$(p_dbg)
 
 d_lbase	:= debian/$(p_lbase)
@@ -265,7 +263,6 @@ d_ldbg	:= debian/$(p_ldbg)
 d_ltst	:= debian/$(p_ltst)
 
 build-arch: stamps/stamp-build
-build-indep: stamps/stamp-build-doc
 build: build-arch
 stamps/stamp-build: stamps/stamp-build-static stamps/stamp-mincheck \
     stamps/stamp-build-shared stamps/stamp-build-debug \
@@ -278,7 +275,6 @@ PROFILE_EXCLUDES = test_compiler test_distutils test_platform test_subprocess \
 	test_thread test_threaded_import test_threadedtempfile \
 	test_socketserver \
 	test_threading test_threading_local test_threadsignals \
-	test_dbm_dumb test_dbm_ndbm test_pydoc test_sundry test_gdb \
 
 ifneq (,$(filter $(DEB_HOST_ARCH), arm armel))
   PROFILE_EXCLUDES += test_float
@@ -683,15 +679,6 @@ minimal-test:
 		test_codecencodings_jp test_codecencodings_kr \
 		test_codecencodings_tw test_codecs test_multibytecodec \
 
-stamps/stamp-doc-html:
-	dh_testdir
-	$(MAKE) -C Doc html
-	@mkdir -p stamps
-	touch stamps/stamp-doc-html
-
-build-doc: stamps/stamp-build-doc
-stamps/stamp-build-doc: stamps/stamp-patch stamps/stamp-doc-html
-	touch stamps/stamp-build-doc
 
 control-file:
 	sed -e "s/@PVER@/$(PVER)/g" \
@@ -755,7 +742,6 @@ stamps/stamp-control:
 	    sed -e "s/@PVER@/$(PVER)/g;s/@VER@/$(VER)/g" \
 		    -e "s/@PRIORITY@/$(PRIORITY)/g" \
 		    -e "s,@SCRIPTDIR@,/$(scriptdir),g" \
-		    -e "s,@INFO@,$(info_docs),g" \
 		    -e "s,@HOST_QUAL@,:$(DEB_HOST_ARCH),g" \
 		  <$$f >$$f2; \
 	  fi; \
@@ -862,7 +848,6 @@ endif
 	    mv $(d)/usr/man/man1/* $(d)/usr/share/man/man1/; \
 	    rm -rf $(d)/usr/man/; \
 	fi
-	cp -p debian/pydoc.1 $(d)/usr/share/man/man1/pydoc$(VER).1
 
 	: # Symlinks to /usr/bin for some tools
 	ln -sf ../lib/python$(VER)/pdb.py $(d)/usr/bin/pdb$(VER)
@@ -884,8 +869,7 @@ endif
 
 	dh_installdirs -p$(p_lib) \
 		usr/lib/$(DEB_HOST_MULTIARCH) \
-		$(scriptdir)/config-$(DEB_HOST_MULTIARCH) \
-		usr/share/doc
+		$(scriptdir)/config-$(DEB_HOST_MULTIARCH)
 	: # install the shared library
 	cp -p $(buildd_shared)/libpython$(VER).so.1.0 \
 		$(d_lib)/usr/lib/$(DEB_HOST_MULTIARCH)/
@@ -895,7 +879,6 @@ endif
 	    /usr/lib/$(DEB_HOST_MULTIARCH)/libpython$(VER).so.1 \
 		/$(scriptdir)/config-$(DEB_HOST_MULTIARCH)/libpython$(VER).so
 
-	ln -sf $(p_base) $(d_lib)/usr/share/doc/$(p_lib)
 
 	ln -sf libpython$(VER).so.1 $(d)/usr/lib/$(DEB_HOST_MULTIARCH)/libpython$(VER).so
 
@@ -904,7 +887,6 @@ ifeq ($(with_interp),shared)
 	install -m755 $(buildd_static)/python $(d)/usr/bin/python$(VER)-static
 endif
 
-	mv $(d)/usr/bin/pydoc $(d)/usr/bin/pydoc$(VER)
 	cp -p Tools/i18n/pygettext.py $(d)/usr/bin/pygettext$(VER)
 	cp -p debian/pygettext.1 $(d)/usr/share/man/man1/pygettext$(VER).1
 
@@ -992,16 +974,8 @@ endif
 
 	: # Move the static library and the header files into $(p_dev).
 	dh_installdirs -p$(p_dev) \
-		usr/share/doc/python$(VER)/$(DEB_HOST_MULTIARCH) \
 		usr/share/man/man1 \
-		$(scriptdir) \
-		$(scriptdir)/doc/html
-
-	cp -p Misc/HISTORY Misc/README.valgrind Misc/gdbinit \
-		debian/README.maintainers \
-		$(d_dev)/usr/share/doc/python$(VER)/
-	cp -p	$(buildd_static)/pybench.log \
-		$(d_dev)/usr/share/doc/python$(VER)/$(DEB_HOST_MULTIARCH)/
+		$(scriptdir)
 
 	$(dh_compat2) dh_movefiles -p$(p_dev) --sourcedir=$(d) \
 		usr/bin/python$(VER)-config \
@@ -1061,34 +1035,6 @@ endif
 		usr/bin/idle-python$(VER)
 	cp -p debian/idle-$(PVER).1 $(d_idle)/usr/share/man/man1/
 
-	: # Move the demos and tools into $(p_exam)'s doc directory
-	dh_installdirs -p$(p_exam) \
-		usr/share/doc/python$(VER)/examples
-
-	cp -rp Demo Tools $(d_exam)/usr/share/doc/python$(VER)/examples/
-	rm -rf $(d_exam)/usr/share/doc/python$(VER)/examples/Demo/sgi
-	: # IDLE is in its own package:
-	rm -rf $(d_exam)/usr/share/doc/python$(VER)/examples/Tools/idle
-	: # XXX: We don't need rgb.txt, we'll use our own:
-	rm -rf $(d_exam)/usr/share/doc/python$(VER)/examples/Tools/pynche/X
-
-	: # XXX: Some files in upstream Demo and Tools have strange
-	: # exec permissions, make lintian glad:
-	-chmod 644 $(d_tk)/$(scriptdir)/lib-tk/Tix.py
-	-chmod 644 $(d)/$(scriptdir)/runpy.py
-
-	cd $(d_exam)/usr/share/doc/python$(VER)/examples && chmod 644 \
-	  Demo/{classes/*.py*,comparisons/patterns} \
-	  Demo/{rpc/test,threads/*.py*,md5test/*} \
-	  Demo/pdist/{client.py,cmdfw.py,cmptree.py,cvslib.py,cvslock.py,FSProxy.py,mac.py,rcsclient.py,rcslib.py,security.py,server.py,sumtree.py} \
-	  Demo/scripts/morse.py \
-	  Demo/sockets/{broadcast.py,ftp.py,mcast.py,radio.py} \
-	  Demo/tix/{bitmaps/{tix.gif,*x[pb]m*},samples/*.py} \
-	  Demo/tkinter/guido/{AttrDialog.py,hanoi.py,hello.py,imagedraw.py,imageview.py,listtree.py,ManPage.py,ShellWindow.py,wish.py} \
-	  Tools/scripts/pydocgui.pyw \
-	  Tools/scripts/mailerdaemon.py
-	rm -f $(d_exam)/usr/share/doc/python$(VER)/examples/Demo/scripts/newslist.*
-
 	: # Replace all '#!' calls to python with $(PY_INTERPRETER)
 	: # and make them executable
 	for i in `find debian -mindepth 3 -type f ! -name '*.dpatch'`; do \
@@ -1103,29 +1049,9 @@ endif
 	  fi; \
 	done
 
-	: # Move the docs into $(p_base)'s /usr/share/doc/$(PVER) directory,
-	: # all other packages only have a copyright file.
-	dh_installdocs -p$(p_base) \
-		README Misc/NEWS Misc/ACKS
-	ln -sf NEWS.gz $(d_base)/usr/share/doc/$(p_base)/changelog.gz
-	dh_installdocs --all -N$(p_base) -N$(p_dev) -N$(p_dbg) -N$(p_lib) debian/README.Debian
-
-	: # IDLE has its own changelogs, docs...
-	dh_installchangelogs -p$(p_idle) Lib/idlelib/ChangeLog
-	dh_installdocs -p$(p_idle) Lib/idlelib/{NEWS,README,TODO,extend}.txt
-
 	mkdir -p $(d_idle)/usr/share/applications
 	cp -p debian/idle.desktop \
 		$(d_idle)/usr/share/applications/idle-$(PVER).desktop
-
-	: # those packages have own README.Debian's
-	install -m 644 -p debian/README.$(p_base) \
-		$(d_base)/usr/share/doc/$(PVER)/README.Debian
-	install -m 644 -p debian/README.$(p_idle) \
-		$(d_idle)/usr/share/doc/$(p_idle)/README.Debian
-ifeq ($(with_tk),yes)
-	cp -p debian/README.Tk $(d_tk)/usr/share/doc/$(p_tk)/
-endif
 
 	: # library files into $(p_lbase)
 	dh_installdirs -p$(p_lbase) \
@@ -1227,12 +1153,8 @@ endif
 	dh_installdirs -p$(p_dbg) \
 		usr/bin \
 		$(scriptdir)/lib-dynload \
-		usr/share/man/man1 \
-		usr/share/doc/$(p_base)
+		usr/share/man/man1
 
-	cp -p Misc/SpecialBuilds.txt $(d_dbg)/usr/share/doc/$(p_base)/
-	cp -p debian/$(PVER)-dbg.README.Debian \
-		$(d_dbg)/usr/share/doc/$(p_base)/README.debug
 	cp -p $(buildd_debug)/python $(d_dbg)/usr/bin/$(PVER)-dbg
 	cp -p $(d)-shdbg/usr/bin/python-config.sh \
 		$(d_dbg)/usr/bin/$(PVER)-dbg-config
@@ -1284,37 +1206,7 @@ binary-indep: build-indep install stamps/stamp-control
 	dh_testdir -i
 	dh_testroot -i
 
-	: # $(p_doc) package
-	dh_installdirs -p$(p_doc) \
-		usr/share/doc/$(p_base) \
-		usr/share/doc/$(p_doc)
-	dh_installdocs -p$(p_doc)
-	cp -a Doc/build/html $(d_doc)/usr/share/doc/$(p_base)/
-	rm -f $(d_doc)/usr/share/doc/$(p_base)/html/_static/jquery.js
-	rm -f $(d_doc)/usr/share/doc/$(p_base)/html/_static/underscore.js
-	dh_link -p$(p_doc) \
-		/usr/share/doc/$(p_base)/html \
-			/usr/share/doc/$(p_doc)/html \
-		/usr/share/javascript/jquery/jquery.js \
-			/usr/share/doc/$(p_base)/html/_static/jquery.js \
-		/usr/share/javascript/underscore/underscore.js \
-			/usr/share/doc/$(p_base)/html/_static/underscore.js
-
-	: # devhelp docs
-	$(buildd_static)/python debian/pyhtml2devhelp.py \
-		$(d_doc)/usr/share/doc/$(p_base)/html index.html $(VER) \
-		> $(d_doc)/usr/share/doc/$(p_base)/html/$(PVER).devhelp
-	gzip -9nv $(d_doc)/usr/share/doc/$(p_base)/html/$(PVER).devhelp
-	dh_link -p$(p_doc) \
-		/usr/share/doc/$(p_base)/html /usr/share/devhelp/books/$(PVER)
-
-	for i in $(p_ltst); do \
-	  rm -rf debian/$$i/usr/share/doc/$$i; \
-	  ln -s $(p_lbase) debian/$$i/usr/share/doc/$$i; \
-	done
-
 	dh_installdebconf -i $(dh_args)
-	dh_installexamples -i $(dh_args)
 	-dh_icons -i $(dh_args) || dh_iconcache -i $(dh_args)
 	dh_installchangelogs -i $(dh_args)
 	dh_link -i $(dh_args)
@@ -1328,7 +1220,6 @@ binary-indep: build-indep install stamps/stamp-control
 	    echo "make executable: $$i"; \
 	  fi; \
 	done
-	-find $(d_doc) -name '*.txt' -perm 755 -exec chmod 644 {} \;
 
 	dh_installdeb -i $(dh_args)
 	dh_gencontrol -i $(dh_args)
@@ -1344,18 +1235,6 @@ binary-arch: build-arch install
 	-dh_icons -a || dh_iconcache -a
 #	dh_installmime -a
 	dh_installchangelogs -a
-	for i in $(p_dev) $(p_dbg); do \
-	  rm -rf debian/$$i/usr/share/doc/$$i; \
-	  ln -s $(p_base) debian/$$i/usr/share/doc/$$i; \
-	done
-	for i in $(p_lbase); do \
-	  rm -rf debian/$$i/usr/share/doc/$$i; \
-	  ln -s $(p_lmin) debian/$$i/usr/share/doc/$$i; \
-	done
-	for i in $(p_ldev) $(p_ldbg) $(p_lib); do \
-	  rm -rf debian/$$i/usr/share/doc/$$i; \
-	  ln -s $(p_lbase) debian/$$i/usr/share/doc/$$i; \
-	done
 	-find debian ! -perm -200 -print -exec chmod +w {} \;
 ifneq ($(with_tk),yes)
 	rm -f $(d_lbase)/$(scriptdir)/lib-dynload/_tkinter.$(DEB_HOST_MULTIARCH).so
